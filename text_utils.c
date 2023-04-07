@@ -206,25 +206,101 @@ char *get_bytes(char *command, size_t addr_len, size_t size_len)
     return ptr;
 }
 
+// signed char *complete_arg(char *bytes, size_t size)
+// {
+//     signed char *str = (signed char *)malloc((size + 1) * sizeof(signed char));
+//     if (str == NULL)
+//         return NULL;
+
+//     size_t k = strlen(bytes);
+//     memcpy(str, bytes, k * sizeof(signed char));
+//     if (k == size) {
+//         str[k] = '\0';
+//         return str;
+//     }
+    
+//     str[k] = '\n';
+//     k++;
+    
+//     if (k == size) {
+//         str[k] = '\0';
+//         return str;
+//     }
+
+//     char c = 'a';
+//     while (c != '\n') {
+//         scanf("%c", &c);
+//         if (k >= size)
+//             continue;
+//         str[k] = c;
+//         k++;
+//     }
+//     str[size] = '\0';
+//     return str;
+
+// }
+
 char *complete_arg(char *bytes, size_t size)
 {
-    char *str = (char *)malloc((size + 1) * sizeof(char));
+    char *str = malloc((size + 1) * sizeof(char));
     if (str == NULL)
         return NULL;
 
     size_t k = strlen(bytes);
+    if (k > size) {
+        memcpy(str, bytes, size * sizeof(char));
+        str[size] = '\0';
+        return str;
+    }
+
     memcpy(str, bytes, k * sizeof(char));
+    if (k == size) {
+        str[k] = '\0';
+        return str;
+    }
+
+    // altfel mai trebuie citit
     str[k] = '\n';
     k++;
-    char c = 'a';
-    while (c != '\n') {
-        scanf("%c", &c);
-        if (k >= size)
-            continue;
-        str[k] = c;
-        k++;
-    }
-    str[size] = '\0';
-    return str;
+    size = size - k;
 
+    char character = '\n';
+    while (size > 0 || character != '\n') {
+        scanf("%c", &character);
+        if (size == 0)
+            continue;
+
+        str[k] = character;
+        k++;
+        size--;
+    }
+
+    str[k] = '\0';
+    return str; 
+}
+
+signed char *read_chars(size_t size)
+{
+    signed char *str = malloc((size + 1) * sizeof(signed char));
+    if (str == NULL)
+        return NULL;
+
+    // pun un \n la inceputul sirului
+
+    str[0] = '\n';
+    size_t k = 1;
+    size--;
+    char character = 'a';
+    do {
+        scanf("%c", &character);
+        if (size == 0)
+            continue;
+
+        str[k] = character;
+        k++;
+        size--;
+    } while (size > 0 || character != '\n');
+
+    str[k] = '\0';
+    return str;
 }

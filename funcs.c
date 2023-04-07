@@ -100,7 +100,7 @@ void ALLOC_BLOCK_func(arena_t **arena, char *command, int *memups)
     }
 
     // acum am extras adrr si size - ul, urmeaza sa le pun in block
-    if (addr > (*arena)->arena_size) {
+    if (addr >= (*arena)->arena_size) {
         printf("The allocated address is outside the size of arena\n");
         return;
     }
@@ -116,7 +116,6 @@ void ALLOC_BLOCK_func(arena_t **arena, char *command, int *memups)
         return;
    }
 
-   (*arena)->minis_no++;
 }
 
 void FREE_BLOCK_func(arena_t *arena, char *command, int *memups)
@@ -206,19 +205,14 @@ void WRITE_func(arena_t *arena, char *command, int *memups)
     free(size_str);
 
     char *bytes = get_bytes(command, addr_len, size_len);
-    if (*bytes == '\0') {
-        printf("Invalid command.Please try again.\n");
-        printf("Invalid command.Please try again.\n");
-        printf("Invalid command.Please try again.\n");
-        return;
-    }
+    int8_t *data = NULL;
+    if (*bytes == '\0')
+        data = (int8_t *)read_chars(size);
+    else
+        data = (int8_t *)complete_arg(bytes, size);
 
-    char *data = complete_arg(bytes, size);
-    if (data == NULL) {
-        *memups = -1;
-        return;
-    }
-      
+    write(arena, addr, size, data);
+    free(data);
 }
 
 void READ_func(arena_t *arena, char *command, int *memups)
@@ -259,7 +253,7 @@ void READ_func(arena_t *arena, char *command, int *memups)
         return;
     }
 
-    printf("addr: %lu | size : %lu\n", addr, size);
+    read(arena, addr, size);
 }
 
 void PMAP_func(arena_t *arena, char *command, int *memups)

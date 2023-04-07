@@ -1,6 +1,5 @@
 #include "vma.h"
 
-
 // functie care cauta prin lista de blocuri, daca noul bloc cu parametrii
 // addr si size are loc in arena
 // functia intoarce 0 daca nu are loc, 1 daca are loc si nu are alte blocuri
@@ -469,7 +468,7 @@ void delete_inside(arena_t *arena, address_t *pair)
     free(new_block);
 }
 
-address_t *write_address(arena_t *arena, uint64_t addr)
+address_t *read_write_addr(arena_t *arena, uint64_t addr)
 {
     address_t *pair = malloc(sizeof(address_t));
     if (pair == NULL) {
@@ -513,17 +512,21 @@ address_t *write_address(arena_t *arena, uint64_t addr)
 
 void write_data(arena_t *arena, address_t *pair, uint64_t addr, int8_t *data, size_t size)
 {
+    size_t init_size = size;
     node_t *curr = pair->miniblock;
     miniblock_t *minblock = (miniblock_t *)curr->data;
-    minblock->rw_buffer = (int8_t *)calloc(minblock->size, sizeof(int8_t));
     if (minblock->rw_buffer == NULL) {
-        arena->alloc_fail = -1;
-        return;
+        minblock->rw_buffer = (int8_t *)calloc(minblock->size, sizeof(int8_t));
+        
+        if (minblock->rw_buffer == NULL) {
+            arena->alloc_fail = -1;
+            return;
+        }
     }
 
     uint64_t start_idx = addr - minblock->start_address;
 
-    int8_t *buff_ptr = minblock->rw_buffer + start_idx;
+    int8_t *buff_ptr = (int8_t *)minblock->rw_buffer + start_idx;
     int8_t *data_ptr = data;
     uint64_t end = minblock->start_address + minblock->size;
     do {
@@ -537,10 +540,12 @@ void write_data(arena_t *arena, address_t *pair, uint64_t addr, int8_t *data, si
                 break;
             minblock = (miniblock_t *)curr->data;
             uint64_t buff_size = minblock->size;
-            minblock->rw_buffer = (int8_t *)calloc(buff_size, sizeof(int8_t));
             if (minblock->rw_buffer == NULL) {
-                arena->alloc_fail = -1;
-                return;
+                minblock->rw_buffer = (int8_t *)calloc(buff_size, sizeof(int8_t));
+                if (minblock->rw_buffer == NULL) {
+                    arena->alloc_fail = -1;
+                    return;
+                }
             }
 
             buff_ptr = (int8_t *)minblock->rw_buffer;
@@ -551,8 +556,50 @@ void write_data(arena_t *arena, address_t *pair, uint64_t addr, int8_t *data, si
         buff_ptr++;
     } while (size > 0 && curr != NULL);
 
-    if (size > 0)
-        printf("Warning: size was bigger than the block size.\n");
+    if (size > 0) {
+        printf("Warning: size was bigger than the block size. ");
+        printf("Writing %lu characters.\n", init_size - size);
+    }
+}
+
+void read_data(arena_t *arena, address_t *pair, uint64_t addr, size_t size) {
+    // calculez daca pot citi toate caracterele
+    uint64_t block_start = ((block_t *)pair->block->data)->start_address;
+    size_t block_size = ((block_t *)pair->block->data)->size;
+    uint64_t block_end = block_start + block_size;
+    if (addr + size > block_end) {
+        printf("Warning: size was bigger than the block size. ");
+        printf("Reading %lu characters.\n", block_end - addr);
+    }
+    
+    node_t *curr = pair->miniblock;
+    miniblock_t *minblock = (miniblock_t *)curr->data;
+    
+    uint64_t start_idx = addr - minblock->start_address;
+    int8_t *buff_ptr = (int8_t *)minblock->rw_buffer + start_idx;
+
+    uint64_t end = minblock->start_address + minblock->size;
+
+    do {
+        printf("%c", *buff_ptr);
+        addr++;
+        size--;
+        if (addr == end) {
+            curr = curr->next;
+            if (curr == NULL)
+                break;;
+
+            minblock = (miniblock_t *)curr->data;
+            buff_ptr = (int8_t *)minblock->rw_buffer;
+            end = minblock->start_address + minblock->size;
+            continue;
+        }
+
+        buff_ptr++;
+
+    } while (size > 0 && curr != NULL);
+
+    printf("\n");
 }
 
 arena_t *alloc_arena(const uint64_t size)
@@ -587,22 +634,26 @@ void alloc_block(arena_t *arena, const uint64_t address, const uint64_t size)
 
     if (put == 1) {
         add_newBlock(arena, address, size);
+        arena->minis_no++;
         return;
     }
 
     // daca are adiacent la stanga, trebuie sa dau merge la dreapta
     if (put == LEFT_ADJACENT) {
         MergeAtRight(arena, address, size);
+        arena->minis_no++;
         return;
     }
 
     if (put == RIGHT_ADJACENT) {
         MergeAtLeft(arena, address, size);
+        arena->minis_no++;
         return;
     }
 
     if (put == BOTH_ADJACENT) {
         MergeBothSides(arena, address, size);
+        arena->minis_no++;
         return;
     }
     
@@ -639,13 +690,24 @@ void free_block(arena_t *arena, const uint64_t address)
 
 void read(arena_t *arena, uint64_t address, uint64_t size)
 {
+    address_t *pair = read_write_addr(arena, address);
 
+    if (arena->alloc_fail == -1)
+        return;
+
+    if (pair == NULL) {
+        printf("Invalid address for read.\n");
+        return;
+    }
+
+    read_data(arena, pair, address, size);
+    free(pair);
 }
 
 void write(arena_t *arena, const uint64_t address, const uint64_t size, int8_t *data)
 {
     // obtin blocul si miniblocul de unde incep sa scriu
-    address_t *pair = write_address(arena, address);
+    address_t *pair = read_write_addr(arena, address);
     if (arena->alloc_fail == -1)
         return;
     
@@ -655,7 +717,8 @@ void write(arena_t *arena, const uint64_t address, const uint64_t size, int8_t *
         return;
     }
 
-
+    write_data(arena, pair, address, data, size);
+    free(pair);
 }
 
 // se schimba %lu cu %X
@@ -665,18 +728,18 @@ void pmap(const arena_t *arena)
     uint64_t mem_free = arena->free_memory;
     uint64_t minis_no = arena->minis_no;
     uint64_t blocks_no = arena->alloc_list->size;
-    printf("Total memory: %lu\n", mem_total);
-    printf("Free memory: %lu\n", mem_free);
+    printf("Total memory: 0x%lX bytes\n", mem_total);
+    printf("Free memory: 0x%lX bytes\n", mem_free);
     printf("Number of allocated blocks: %lu\n", blocks_no);
     printf("Number of allocated miniblocks: %lu\n", minis_no);
 
     node_t *curr_blck = arena->alloc_list->head;
     for (uint64_t i = 0; i < blocks_no; i++) {
-        printf("\nBlock %lu begin\n", i);
+        printf("\nBlock %lu begin\n", i + 1);
 
         uint64_t start = ((block_t *)curr_blck->data)->start_address;
         uint64_t end = start + ((block_t *)curr_blck->data)->size; 
-        printf("Zone: 0x%lu - 0x%lu\n", start, end);
+        printf("Zone: 0x%lX - 0x%lX\n", start, end);
 
         node_t *curr_mini = ((block_t *)curr_blck->data)->miniblock_list->head;
         // pentru start si end de la miniblock-uri folosesc aceleasi variabile
@@ -687,12 +750,12 @@ void pmap(const arena_t *arena)
         for (uint64_t j = 0; j < minis_no; j++) {
             start = ((miniblock_t *)curr_mini->data)->start_address;
             end = start + ((miniblock_t *)curr_mini->data)->size;
-            printf("Miniblock %lu:", j);
-            printf("\t\t0x%lu\t\t-\t\t0x%lu\t\t| ", start, end);
+            printf("Miniblock %lu:", j + 1);
+            printf("\t\t0x%lX\t\t-\t\t0x%lX\t\t| ", start, end);
             printf("RW-\n");
             curr_mini = curr_mini->next;
         }
-        printf("Block %lu end\n", i);
+        printf("Block %lu end\n", i + 1);
 
         curr_blck = curr_blck->next;
     }

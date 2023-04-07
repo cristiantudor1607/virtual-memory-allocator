@@ -37,4 +37,7 @@ void delete_first(arena_t *arena, address_t *pair);
 void delete_last(arena_t *arena, address_t *pair);
 void delete_inside(arena_t *arena, address_t *pair);
 size_t get_size(list_t *miniblock_list);
-address_t *write_address(arena_t *arena, uint64_t addr);
+address_t *read_write_address(arena_t *arena, uint64_t addr);
+void write_data(arena_t *arena, address_t *pair, uint64_t addr, int8_t *data, size_t size);
+void read_data(arena_t *arena, address_t *pair, uint64_t addr, size_t size);
+

@@ -11,3 +11,4 @@ int cmd_idgen(char *command);
 void print_error(char *msg, size_t n);
 char *get_bytes(char *command, size_t addr_len, size_t size_len);
 char *complete_arg(char *bytes, size_t size);
+signed char *read_chars(size_t size);
