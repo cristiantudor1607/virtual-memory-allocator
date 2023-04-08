@@ -14,3 +14,4 @@ void FREE_BLOCK_func(arena_t *arena, char *command, int *memups);
 void PMAP_func(arena_t *arena, char *command, int *memups);
 void WRITE_func(arena_t *arena, char *command, int *memups);
 void READ_func(arena_t *arena, char *command, int *memups);
+void MPROTECT_func(arena_t *arena, char *command, int *memups);

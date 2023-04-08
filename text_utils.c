@@ -172,6 +172,11 @@ int cmd_idgen(char *command)
         return 7;
     }
 
+    if (strcmp(keyword, "MPROTECT") == 0) {
+        free(keyword);
+        return 8;
+    }
+
     free(keyword);
     // pentru comenzile invalide id - ul o sa fie 0
     return 0;
@@ -205,40 +210,6 @@ char *get_bytes(char *command, size_t addr_len, size_t size_len)
 
     return ptr;
 }
-
-// signed char *complete_arg(char *bytes, size_t size)
-// {
-//     signed char *str = (signed char *)malloc((size + 1) * sizeof(signed char));
-//     if (str == NULL)
-//         return NULL;
-
-//     size_t k = strlen(bytes);
-//     memcpy(str, bytes, k * sizeof(signed char));
-//     if (k == size) {
-//         str[k] = '\0';
-//         return str;
-//     }
-    
-//     str[k] = '\n';
-//     k++;
-    
-//     if (k == size) {
-//         str[k] = '\0';
-//         return str;
-//     }
-
-//     char c = 'a';
-//     while (c != '\n') {
-//         scanf("%c", &c);
-//         if (k >= size)
-//             continue;
-//         str[k] = c;
-//         k++;
-//     }
-//     str[size] = '\0';
-//     return str;
-
-// }
 
 char *complete_arg(char *bytes, size_t size)
 {
@@ -279,7 +250,7 @@ char *complete_arg(char *bytes, size_t size)
     return str; 
 }
 
-signed char *read_chars(size_t size)
+int8_t *read_chars(size_t size)
 {
     signed char *str = malloc((size + 1) * sizeof(signed char));
     if (str == NULL)
@@ -303,4 +274,55 @@ signed char *read_chars(size_t size)
 
     str[k] = '\0';
     return str;
+}
+
+int8_t perm_id(char *keyword)
+{
+    if (strcmp(keyword, "PROT_NONE") == 0)
+        return 0;
+
+    if (strcmp(keyword, "PROT_READ") == 0)
+        return 4;
+
+    if (strcmp(keyword, "PROT_WRITE") == 0)
+        return 2;
+
+    if (strcmp(keyword, "PROT_EXEC") == 0)
+        return 1;
+
+    return -1;
+}
+
+int8_t get_permissions(char *command)
+{
+    // prima oara trec peste comanda
+    char *p = strtok(command, " |");
+    size_t count = 1;
+    int error = 0;
+
+    // trec peste adresa
+    p = strtok(NULL, " |");
+    count++;
+
+    p = strtok(NULL, " |");
+    int8_t perm = 0;    
+    while(p) {
+        count++;
+        int8_t this_perm = perm_id(p);
+        if (this_perm == -1) {
+            error = 1;
+            p = strtok(NULL, " |");
+            continue;
+        }
+
+        perm += this_perm;
+        p = strtok(NULL, " |");
+    }
+
+    if (error == 1) {
+        print_error("Invalid command. Please try again.\n", count);
+        return -1;
+    }
+    
+    return perm;
 }

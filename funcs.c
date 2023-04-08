@@ -269,3 +269,33 @@ void PMAP_func(arena_t *arena, char *command, int *memups)
 
     pmap(arena);
 }
+
+void MPROTECT_func(arena_t *arena, char *command, int *memups)
+{
+    char *addr_str = get_nth_arg(command, 2);
+    if (addr_str == NULL) {
+        *memups = -1;
+        return;
+    }
+
+    uint64_t addr = strtoul(addr_str, NULL, 10);
+    size_t k = strcmp(addr_str, "0");
+    free(addr_str);
+    if (addr == 0 && k != 0) {
+        *memups = -1;
+        return;
+    }
+
+    address_t *pair = free_address(arena, addr);
+    if (pair == NULL) {
+        printf("Invalid address for mprotect.\n");
+        return;
+    }
+    free(pair);
+    
+    int8_t perm = get_permissions(command);
+    if (perm == -1)
+        return;
+
+    mprotect(arena, addr, &perm);
+}

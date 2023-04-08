@@ -38,7 +38,10 @@ int main(void)
             break;
         case 7:
             PMAP_func(main_arena, command, &memups);
-            break;  
+            break;
+        case 8:
+            MPROTECT_func(main_arena, command, &memups);
+            break;
         case 0:
             check = check_validity(command, 0);
             if (check == -1)
@@ -54,6 +57,7 @@ int main(void)
         memups = read_string(&command);
         if (memups < 0)
             break;
+
     }
     if (memups == -1)
         printf(MEMERR);

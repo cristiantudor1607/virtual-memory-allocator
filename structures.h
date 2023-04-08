@@ -16,7 +16,7 @@ typedef struct {
    node_t *tail;
    size_t size;
    uint64_t data_size;
-   void (*free_func)(void *);
+   void (*free_func)(void *data);
 } list_t;
 
 // parametrul alloc_fail este pentru a tine cont de fail - urile de
@@ -52,3 +52,10 @@ typedef struct {
    node_t *miniblock;
    uint64_t m_idx;
 } address_t;
+
+// o structura care sa imi returneze ce permisiuni are un miniblock
+typedef struct {
+   int8_t read;
+   int8_t write;
+   int8_t execute;
+} permission_t;

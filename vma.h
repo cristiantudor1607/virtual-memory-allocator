@@ -41,3 +41,6 @@ address_t *read_write_address(arena_t *arena, uint64_t addr);
 void write_data(arena_t *arena, address_t *pair, uint64_t addr, int8_t *data, size_t size);
 void read_data(arena_t *arena, address_t *pair, uint64_t addr, size_t size);
 
+permission_t check_perm(int8_t perm);
+void print_perms(int8_t perm);
+

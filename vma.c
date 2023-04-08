@@ -602,6 +602,86 @@ void read_data(arena_t *arena, address_t *pair, uint64_t addr, size_t size) {
     printf("\n");
 }
 
+permission_t check_perm(int8_t perm)
+{
+    permission_t my_perms;
+    my_perms.execute = 0;
+    my_perms.write = 0;
+    my_perms.read = 0;
+
+    if (perm - 4 >= 0) {
+        perm = perm - 4;
+        my_perms.read = 1;
+    }
+
+    if (perm - 2 >= 0) {
+        perm = perm - 2;
+        my_perms.write = 1;
+    }
+
+    if (perm - 1 >= 0) {
+        perm = perm - 1;
+        my_perms.execute = 1;
+    }
+
+    return my_perms;
+}
+
+int8_t block_perms(address_t *pair, size_t size, int8_t perm)
+{
+    node_t *curr = pair->miniblock;
+    miniblock_t *mini = (miniblock_t *)pair->miniblock->data;
+    int8_t curr_perms = mini->perm;
+    
+    do {
+        permission_t this_perms = check_perm(curr_perms);
+        if (perm == 4) {
+            if (this_perms.read == 0)
+                return 0;
+        }
+
+        if (perm == 2) {
+            if (this_perms.write == 0)
+                return 0;
+        }
+
+        size = size - mini->size;
+        if (curr->next == NULL)
+            break;
+
+        curr = curr->next;
+        mini = (miniblock_t *)curr->data;
+        curr_perms = mini->perm;
+    } while (size > 0);
+
+    return 1;
+}
+
+void print_perms(int8_t perm)
+{
+    if (perm - 4 >= 0) {
+        printf("R");
+        perm = perm - 4;
+    } else {
+        printf("-");
+    }
+
+    if (perm - 2 >= 0) {
+        printf("W");
+        perm = perm - 2;
+    } else {
+        printf("-");
+    }
+
+
+    if (perm - 1 >= 0) {
+        printf("X");
+        perm = perm - 1;
+    } else {
+        printf("-");
+    }
+}
+
 arena_t *alloc_arena(const uint64_t size)
 {
     arena_t *new_arena = (arena_t *)malloc(sizeof(arena_t));
@@ -699,6 +779,14 @@ void read(arena_t *arena, uint64_t address, uint64_t size)
         printf("Invalid address for read.\n");
         return;
     }
+    
+    // verific permisiunile de citire
+    int8_t is_ok = block_perms(pair, size, 4);
+    if (is_ok == 0) {
+        printf("Invalid permissions for read.\n");
+        free(pair);
+        return;
+    }
 
     read_data(arena, pair, address, size);
     free(pair);
@@ -714,6 +802,14 @@ void write(arena_t *arena, const uint64_t address, const uint64_t size, int8_t *
     // cazul in care nu s-a gasit
     if (pair == NULL) {
         printf("Invalid address for write.\n");
+        return;
+    }
+
+    // verific daca are permisiuni de scriere
+    int8_t is_ok = block_perms(pair, size, 2);
+    if (is_ok == 0) {
+        printf("Invalid permissions for write.\n");
+        free(pair);
         return;
     }
 
@@ -752,7 +848,9 @@ void pmap(const arena_t *arena)
             end = start + ((miniblock_t *)curr_mini->data)->size;
             printf("Miniblock %lu:", j + 1);
             printf("\t\t0x%lX\t\t-\t\t0x%lX\t\t| ", start, end);
-            printf("RW-\n");
+            int8_t perm = ((miniblock_t *)curr_mini->data)->perm;
+            print_perms(perm);
+            printf("\n");
             curr_mini = curr_mini->next;
         }
         printf("Block %lu end\n", i + 1);
@@ -763,6 +861,10 @@ void pmap(const arena_t *arena)
 
 void mprotect(arena_t *arena, uint64_t address, int8_t *permission)
 {
-
+    // adresa a fost deja verificata la momentul apelarii functiei
+    address_t *pair = free_address(arena, address);
+    miniblock_t *mini = (miniblock_t *)pair->miniblock->data;
+    mini->perm = *permission;
+    free(pair);
 }
 
