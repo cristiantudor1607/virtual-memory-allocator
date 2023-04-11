@@ -2,300 +2,309 @@
 
 void ALLOC_ARENA_func(arena_t **arena, char *command, int *memups)
 {
-    int check;
-    check = check_validity(command, 2);
-    if (check == 0)
-        return;
+	int check = check_validity(command, 2);
 
-    if (check == -1) {
-        *memups = -1;
-        //printf(MEMERR);
-        return;
-    }
+	if (check == -1) {
+		*memups = -1;
+		return;
+	}
 
-    char *str_size = get_nth_arg(command, 2);
-    if (str_size == NULL) {
-        *memups = -1;
-        //printf(MEMERR);
-        return;
-    }
+	if (check == 0)
+		return;
 
-    // strtoul returneaza 0 daca nu s - a putut face o conversie valida
-    // sau daca dimensiunea data e 0
-    uint64_t size = strtoul(str_size, NULL, 10);
-    free(str_size);
+	char *str_size = get_nth_arg(command, 2);
+	if (!str_size) {
+		*memups = -1;
+		return;
+	}
 
-    // pot sa pun conditia ca strcmp(strsize, 0 ) != 0 !!!
-    if (size == 0) {
-       // dau comanda de check la un nr mai mare de argumente 
-       // pentru a afisa eroarea
-       check_validity(command, BIG_NUM);
-       return;
-    }
+	// strtoul returneaza 0 daca nu s-a putut face o conversie valida
+	uint64_t size = strtoul(str_size, NULL, 10);
+	free(str_size);
 
-    *arena = alloc_arena(size);
-    if (*arena == NULL) {
-        *memups = -1;
-        //printf(MEMERR);
-        return;
-    }
+	// size-ul nu are cum sa fie 0, asa ca verific daca s-a facut conversia
+	if (size == 0) {
+		// dau comanda de check la un nr mare de argumente, ca sa afisez
+		// invalid command-urile
+		check_validity(command, BIG_NUM);
+		return;
+	}
+
+	*arena = alloc_arena(size);
+	if (!(*arena)) {
+		*memups = -1;
+		return;
+	}
 }
 
 void DEALLOC_ARENA_func(arena_t *arena, char *command, int *memups)
 {
-    int check;
-    check = check_validity(command, 1);
-    if (check == 0)
-        return;
+	int check = check_validity(command, 1);
 
-    if (check == -1) {
-        *memups = -1;
-        return;
-    }
+	if (check == -1) {
+		*memups = -1;
+		return;
+	}
 
-    dealloc_arena(arena);
-    *memups = 0;
+	if (check == 0)
+		return;
+
+	dealloc_arena(arena);
+	*memups = 0;
 }
 
 void ALLOC_BLOCK_func(arena_t **arena, char *command, int *memups)
 {
-    int check;
-    check = check_validity(command, 3);
-    if (check == 0)
-        return;
+	int check = check_validity(command, 3);
+	if (check == -1) {
+		*memups = -1;
+		return;
+	}
 
-    if (check == -1) {
-        *memups = -1;
-        return;
-    }
+	if (check == 0)
+		return;
 
-    char *str_addr = get_nth_arg(command, 2);
-    if (str_addr == NULL) {
-        *memups = -1;
-        return;
-    }
+	char *str_addr = get_nth_arg(command, 2);
+	if (!str_addr) {
+		*memups = -1;
+		return;
+	}
 
-    uint64_t addr = strtoul(str_addr, NULL, 10);
+	uint64_t addr = strtoul(str_addr, NULL, 10);
+	size_t k = strcmp(str_addr, "0");
+	free(str_addr);
 
-    if (addr == 0 && strcmp(str_addr, "0") != 0) {
-        // dau check la un nr mare de argumente pentru a afisa eroarea
-        check_validity(command, BIG_NUM);
-        free(str_addr);
-        return;
-    }
-    free(str_addr);
+	// verific daca s-a facut conversia, adica user-ul sa nu fi scris un string
+	// care nu poate fi convertit
+	if (addr == 0 && k != 0) {
+		check_validity(command, BIG_NUM);
+		return;
+	}
 
-    char *str_size = get_nth_arg(command, 3);
-    if (str_size == NULL) {
-        *memups = -1;
-        return;
-    }
+	char *str_size = get_nth_arg(command, 3);
+	if (!str_size) {
+		*memups = -1;
+		return;
+	}
 
-    size_t size = strtoul(str_size, NULL, 10);
-    free(str_size);
+	size_t size = strtoul(str_size, NULL, 10);
+	free(str_size);
 
-    if (str_size == 0) {
-        check_validity(command, BIG_NUM);
-        return;
-    }
+	// aceeasi verificare ca cea de mai sus
+	if (str_size == 0) {
+		check_validity(command, BIG_NUM);
+		return;
+	}
 
-    // acum am extras adrr si size - ul, urmeaza sa le pun in block
-    if (addr >= (*arena)->arena_size) {
-        printf("The allocated address is outside the size of arena\n");
-        return;
-    }
+	// acum verific daca block-ul poate fi pus in lista
+	if (addr >= (*arena)->arena_size) {
+		printf("The allocated address is outside the size of arena\n");
+		return;
+	}
 
-    if (addr + size > (*arena)->arena_size) {
-        printf("The end address is past the size of the arena\n");
-        return;
-    }
+	if (addr + size > (*arena)->arena_size) {
+		printf("The end address is past the size of the arena\n");
+		return;
+	}
 
-   alloc_block(*arena, addr, size);
-   if ((*arena)->alloc_fail == -1) {
-        *memups = -1;
-        return;
-   }
-
+	alloc_block(*arena, addr, size);
+	// verific daca a existat un fail in timpul alocarii blocului
+	if ((*arena)->alloc_fail == -1) {
+		*memups = -1;
+		return;
+	}
 }
 
 void FREE_BLOCK_func(arena_t *arena, char *command, int *memups)
 {
-    int check = check_validity(command, 2);
-    if (check == 0)
-        return;
+	int check = check_validity(command, 2);
+	if (check == -1) {
+		*memups = -1;
+		return;
+	}
 
-    if (check == -1) {
-        *memups = -1;
-        return;
-    }
+	if (check == 0)
+		return;
 
-    char *str_addr = get_nth_arg(command, 2);
-    if (str_addr == NULL) {
-        *memups = -1;
-        return;
-    }
+	char *str_addr = get_nth_arg(command, 2);
+	if (!str_addr) {
+		*memups = -1;
+		return;
+	}
 
-    uint64_t addr = strtoul(str_addr, NULL, 10);
-    
-    if (addr == 0 && strcmp(str_addr, "0") != 0) {
-        *memups = -1;
-        free(str_addr);
-        return;
-    }
-    
-    free(str_addr);
+	uint64_t addr = strtoul(str_addr, NULL, 10);
+	size_t k = strcmp(str_addr, "0");
+	free(str_addr);
+	if (addr == 0 && k != 0) {
+		*memups = -1;
+		return;
+	}
 
-    free_block(arena, addr);
-    if (arena->alloc_fail == -1) {
-        *memups = -1;
-        return;
-    }
+	free_block(arena, addr);
+	// verific daca a existat vreun fail la resursele alocate in procesul
+	// de free
+	if (arena->alloc_fail == -1) {
+		*memups = -1;
+		return;
+	}
 }
 
 void WRITE_func(arena_t *arena, char *command, int *memups)
 {
-    // aici nu mai merge validarea clasica
-    char *addr_str = get_nth_arg(command, 2);
-    if (addr_str == NULL) {
-        *memups = -1;
-        return;
-    }
+	// in cazul write nu mai incep cu validarea clasica, folosita la
+	// restul comenzilor, deoarece are un numar variabil de parametrii
+	// separati prin spatiu
+	char *addr_str = get_nth_arg(command, 2);
+	if (!addr_str) {
+		*memups = -1;
+		return;
+	}
 
-    // daca nu exista al doilea argument
-    if (addr_str == command) {
-        printf("Invalid command.Please try again.\n");
-        return;
-    }
-    
-    // salvez lungimea pentru a apela functia de get_bytes
-    size_t addr_len = strlen(addr_str);
+	// daca nu exista al doilea argument, comanda get_nth_arg, il seteaza pe
+	// addr_str la inceputul sirului command
+	if (addr_str == command) {
+		printf("Invalid command.Please try again.\n");
+		return;
+	}
 
-    uint64_t addr = strtoul(addr_str, NULL, 10);
-    if (addr == 0 && strcmp(addr_str, "0") != 0) {
-        // poate testezi failul la asta
-        check_validity(command, 0);
-        free(addr_str);
-        return;
-    }
-    free(addr_str);
+	// salvez lungimea ca sa sar peste addr_len caractere, in functia
+	// get_bytes
+	size_t addr_len = strlen(addr_str);
 
-    char *size_str = get_nth_arg(command, 3);
-    if (size_str == NULL) {
-        *memups = -1;
-        return;
-    }
+	uint64_t addr = strtoul(addr_str, NULL, 10);
+	size_t k = strcmp(addr_str, "0");
+	free(addr_str);
 
-    // daca nu exista al treilea argument
-    if (size_str == command) {
-        printf("Invalid command.Please try again.\n");
-        printf("Invalid command.Please try again.\n");
-        return;
-    }
-    
-    // salvez lungimea pt a apela functia de get_bytes
-    size_t size_len = strlen(size_str);
+	// daca al treilea argument nu este unul valid
+	if (addr == 0 && k != 0) {
+		check_validity(command, 0);
+		return;
+	}
 
-    size_t size = strtoul(size_str, NULL, 10);
-    if (size == 0) {
-        // si la asta
-        check_validity(command, 0);
-        free(size_str);
-        return;
-    }
-    free(size_str);
+	char *size_str = get_nth_arg(command, 3);
+	if (!size_str) {
+		*memups = -1;
+		return;
+	}
 
-    char *bytes = get_bytes(command, addr_len, size_len);
-    int8_t *data = NULL;
-    if (*bytes == '\0')
-        data = (int8_t *)read_chars(size);
-    else
-        data = (int8_t *)complete_arg(bytes, size);
+	// daca nu exista al treilea argument (asem. cu prima testare de mai sus)
+	if (size_str == command) {
+		printf("Invalid command.Please try again.\n");
+		printf("Invalid command.Please try again.\n");
+		return;
+	}
 
-    write(arena, addr, size, data);
-    free(data);
+	// salvez lungimea pt a apela functia de get_bytes
+	size_t size_len = strlen(size_str);
+
+	size_t size = strtoul(size_str, NULL, 10);
+	free(size_str);
+	// size nu ar avea cum sa fie 0, asa ca nu mai pun conditia suplimentara
+	if (size == 0) {
+		check_validity(command, 0);
+		return;
+	}
+
+	char *bytes = get_bytes(command, addr_len, size_len);
+	int8_t *data = NULL;
+
+	// iau 2 cazuri separate, daca se apasa '\n' dupa comanda, sau daca sunt
+	// cativa bytes scrisi
+	if (*bytes == '\0')
+		data = (int8_t *)read_chars(size);
+	else
+		data = (int8_t *)complete_arg(bytes, size);
+
+	write(arena, addr, size, data);
+	free(data);
 }
 
 void READ_func(arena_t *arena, char *command, int *memups)
 {
-    int check = check_validity(command, 3);
-    if (check == -1) {
-        *memups = -1;
-        return;
-    }
+	int check = check_validity(command, 3);
+	if (check == -1) {
+		*memups = -1;
+		return;
+	}
 
-    if (check == 0)
-        return;
+	if (check == 0)
+		return;
 
-    char *str = get_nth_arg(command, 2);
-    if (str == NULL) {
-        *memups = -1; 
-        return;
-    }
+	char *str = get_nth_arg(command, 2);
+	if (!str) {
+		*memups = -1;
+		return;
+	}
 
-    uint64_t addr = strtoul(str, NULL, 10);
-    if (addr == 0 && strcmp(str, "0") != 0) {
-        free(str);
-        *memups = -1;
-        return;
-    }
-    free(str);
+	uint64_t addr = strtoul(str, NULL, 10);
+	size_t k = strcmp(str, "0");
+	free(str);
+	if (addr == 0 && k != 0) {
+		*memups = -1;
+		return;
+	}
 
-    str = get_nth_arg(command, 3);
-    if (str == NULL) {
-        *memups = -1;
-        return;
-    }
+	str = get_nth_arg(command, 3);
+	if (!str) {
+		*memups = -1;
+		return;
+	}
 
-    uint64_t size = strtoul(str, NULL, 10);
-    free(str);
-    if (size == 0) {
-        *memups = -1;
-        return;
-    }
+	uint64_t size = strtoul(str, NULL, 10);
+	free(str);
+	if (size == 0) {
+		*memups = -1;
+		return;
+	}
 
-    read(arena, addr, size);
+	read(arena, addr, size);
 }
 
 void PMAP_func(arena_t *arena, char *command, int *memups)
 {
-    int check = check_validity(command, 1);
-    if (check == 0)
-        return;
+	int check = check_validity(command, 1);
+	if (check == -1) {
+		*memups = -1;
+		return;
+	}
 
-    if (check == -1) {
-        *memups = -1;
-        return;
-    }
+	if (check == 0)
+		return;
 
-    pmap(arena);
+	pmap(arena);
 }
 
 void MPROTECT_func(arena_t *arena, char *command, int *memups)
 {
-    char *addr_str = get_nth_arg(command, 2);
-    if (addr_str == NULL) {
-        *memups = -1;
-        return;
-    }
+	// MPROTECT poate avea un numar variabil de parametrii, asa ca, asem.
+	// cazului WRITE, nu merge nici aici verificarea clasica
+	char *addr_str = get_nth_arg(command, 2);
+	if (!addr_str) {
+		*memups = -1;
+		return;
+	}
 
-    uint64_t addr = strtoul(addr_str, NULL, 10);
-    size_t k = strcmp(addr_str, "0");
-    free(addr_str);
-    if (addr == 0 && k != 0) {
-        *memups = -1;
-        return;
-    }
+	uint64_t addr = strtoul(addr_str, NULL, 10);
+	size_t k = strcmp(addr_str, "0");
+	free(addr_str);
+	if (addr == 0 && k != 0) {
+		*memups = -1;
+		return;
+	}
 
-    address_t *pair = free_address(arena, addr);
-    if (pair == NULL) {
-        printf("Invalid address for mprotect.\n");
-        return;
-    }
-    free(pair);
-    
-    int8_t perm = get_permissions(command);
-    if (perm == -1)
-        return;
+	// caut perechea (block, miniblock) in arena, iar daca nu o gasesc,
+	// adresa nu e valida pentru mprotect (se poate aplica doar pe adresa de
+	// inceput de miniblock, exact ca la free)
+	address_t *pair = free_address(arena, addr);
+	if (!pair) {
+		printf("Invalid address for mprotect.\n");
+		return;
+	}
+	free(pair);
 
-    mprotect(arena, addr, &perm);
+	int8_t perm = get_permissions(command);
+	if (perm == -1)
+		return;
+
+	mprotect(arena, addr, &perm);
 }

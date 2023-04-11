@@ -28,10 +28,10 @@ size_t get_position(list_t *list, uint64_t addr);
 address_t *free_address(arena_t *arena, uint64_t addr);
 
 miniblock_t *init_miniblock(uint64_t address, size_t size, uint8_t perm);
-void add_newBlock(arena_t *arena, const uint64_t address, const uint64_t size);
-void MergeAtLeft(arena_t *arena, const uint64_t addr, const uint64_t size);
-void MergeAtRight(arena_t *arena, const uint64_t address, const uint64_t size);
-void MergeBothSides(arena_t *arena, const uint64_t addr, const size_t size);
+void add_newblock(arena_t *arena, const uint64_t address, const uint64_t size);
+void mergeatleft(arena_t *arena, const uint64_t addr, const uint64_t size);
+void mergeatright(arena_t *arena, const uint64_t address, const uint64_t size);
+void mergebothsides(arena_t *arena, const uint64_t addr, const size_t size);
 
 void delete_first(arena_t *arena, address_t *pair);
 void delete_last(arena_t *arena, address_t *pair);
@@ -39,7 +39,7 @@ void delete_inside(arena_t *arena, address_t *pair);
 size_t get_size(list_t *miniblock_list);
 address_t *read_write_address(arena_t *arena, uint64_t addr);
 void write_data(arena_t *arena, address_t *pair, uint64_t addr, int8_t *data, size_t size);
-void read_data(arena_t *arena, address_t *pair, uint64_t addr, size_t size);
+void read_data(address_t *pair, uint64_t addr, size_t size);
 
 permission_t check_perm(int8_t perm);
 void print_perms(int8_t perm);

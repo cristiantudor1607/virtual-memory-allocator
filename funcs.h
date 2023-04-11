@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #define MEMERR "Memory allocation error: not enough memory available.\n"
-#define BIG_NUM 100
+#define BIG_NUM 10000
 
 void ALLOC_ARENA_func(arena_t **arena, char *command, int *memups);
 void DEALLOC_ARENA_func(arena_t *arena, char *command, int *memups);
