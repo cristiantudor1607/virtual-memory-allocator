@@ -46,12 +46,17 @@ int main(void)
 			if (check == -1)
 				memups = -1;
 			break;
+		case -1:
+			memups = -1;
+			break;
 		default:
 			// nu se ajunge in default, din cauza comenzii cmd_idgen
 			break;
 		}
+
 		if (memups == -1 || memups == 0)
 			break;
+
 		memups = read_string(&command);
 		if (memups < 0)
 			break;
