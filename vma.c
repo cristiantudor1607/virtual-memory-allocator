@@ -124,7 +124,12 @@ miniblock_t *init_miniblock(uint64_t address, size_t size, uint8_t perm)
 	new_mini->start_address = address;
 	new_mini->size = size;
 	new_mini->perm = perm;
-	new_mini->rw_buffer = NULL;
+	new_mini->rw_buffer = (int8_t *)calloc(size, sizeof(int8_t));
+	if (!new_mini->rw_buffer) {
+		free(new_mini);
+		return NULL;
+	}
+
 	return new_mini;
 }
 
@@ -530,24 +535,14 @@ address_t *read_write_addr(arena_t *arena, uint64_t addr)
 
 // functie care scrie data incepand de la adresa addr, care se afla in
 // miniblockul caracterizat de perechea pair, size bytes
-void write_data(arena_t *arena, address_t *pair, uint64_t addr,
-				int8_t *data, size_t size)
+void write_data(address_t *pair, uint64_t addr, int8_t *data, size_t size)
 {
 	// pastrez size-ul initial, deoarece o sa decrementez size
 	size_t init_size = size;
 	node_t *curr = pair->miniblock;
 	miniblock_t *minblock = (miniblock_t *)curr->data;
 
-	// aloc tot buffer-ul daca nu este alocat deja
-	if (!minblock->rw_buffer) {
-		minblock->rw_buffer = (int8_t *)calloc(minblock->size, sizeof(int8_t));
-
-		if (!minblock->rw_buffer) {
-			arena->alloc_fail = -1;
-			return;
-		}
-	}
-
+	// bufferul este alocat deja de la initializare
 	// bufferul va fi un sir de caractere s, iar octetii vor fi scrisi de la
 	// pozitia s[start_idx], pentru a pastra corespondenta cu adresa
 	uint64_t start_idx = addr - minblock->start_address;
@@ -564,21 +559,13 @@ void write_data(arena_t *arena, address_t *pair, uint64_t addr,
 		size--;
 		// daca a ajuns la finalul unui miniblock
 		if (addr == end) {
-			// verific, aloc, daca este cazul si mut pointerul buff_ptr in urm
-			// miniblock
+			// verific daca am ajuns la finalul block-ului, si daca se poate
+			// trec mai departe, si mut pointer-ul in urm miniblock
 			curr = curr->next;
 			if (!curr)
 				break;
 			minblock = (miniblock_t *)curr->data;
 			uint64_t buff_size = minblock->size;
-			if (!minblock->rw_buffer) {
-				minblock->rw_buffer = (int8_t *)calloc(buff_size,
-													   sizeof(int8_t));
-				if (!minblock->rw_buffer) {
-					arena->alloc_fail = -1;
-					return;
-				}
-			}
 
 			buff_ptr = (int8_t *)minblock->rw_buffer;
 			end = minblock->start_address + buff_size;
@@ -617,7 +604,8 @@ void read_data(address_t *pair, uint64_t addr, size_t size)
 	uint64_t end = minblock->start_address + minblock->size;
 
 	do {
-		printf("%c", *buff_ptr);
+		if (*buff_ptr != '\0')
+			printf("%c", *buff_ptr);
 		addr++;
 		size--;
 		if (addr == end) {
@@ -727,6 +715,9 @@ void print_perms(int8_t perm)
 arena_t *alloc_arena(const uint64_t size)
 {
 	arena_t *new_arena = (arena_t *)malloc(sizeof(arena_t));
+	if (!new_arena)
+		return NULL;
+
 	new_arena->arena_size = size;
 	new_arena->free_memory = size;
 	new_arena->alloc_fail = 1;
@@ -769,12 +760,14 @@ void alloc_block(arena_t *arena, const uint64_t address, const uint64_t size)
 		return;
 	}
 
+	// daca are adiacent la dreapta, trebuie sa dau merge la stanga
 	if (put == RIGHT_ADJACENT) {
 		mergeatleft(arena, address, size);
 		arena->minis_no++;
 		return;
 	}
 
+	// merge in ambele parti
 	if (put == BOTH_ADJACENT) {
 		mergebothsides(arena, address, size);
 		arena->minis_no++;
@@ -793,12 +786,14 @@ void free_block(arena_t *arena, const uint64_t address)
 		return;
 	}
 
+	// daca e la inceputul unui miniblock
 	if (pair->m_idx == 0) {
 		delete_first(arena, pair);
 		free(pair);
 		return;
 	}
 
+	// daca e la sfarsitul unui miniblock
 	size_t list_size = ((block_t *)pair->block->data)->miniblock_list->size;
 	if (pair->m_idx == list_size - 1) {
 		delete_last(arena, pair);
@@ -806,6 +801,7 @@ void free_block(arena_t *arena, const uint64_t address)
 		return;
 	}
 
+	// daca e in interiorul unui miniblock
 	delete_inside(arena, pair);
 	free(pair);
 }
@@ -814,6 +810,7 @@ void read(arena_t *arena, uint64_t address, uint64_t size)
 {
 	address_t *pair = read_write_addr(arena, address);
 
+	// intai testez daca NULL a fost returnat pentru ca alocarea a dat fail
 	if (arena->alloc_fail == -1)
 		return;
 
@@ -822,7 +819,7 @@ void read(arena_t *arena, uint64_t address, uint64_t size)
 		return;
 	}
 
-	// verific permisiunile de citire
+	// verific permisiunile de citire in cate miniblockuri am nevoie
 	int8_t is_ok = block_perms(pair, size, 4);
 	if (is_ok == 0) {
 		printf("Invalid permissions for read.\n");
@@ -830,6 +827,7 @@ void read(arena_t *arena, uint64_t address, uint64_t size)
 		return;
 	}
 
+	// citesc datele
 	read_data(pair, address, size);
 	free(pair);
 }
@@ -856,7 +854,7 @@ void write(arena_t *arena, const uint64_t address,
 		return;
 	}
 
-	write_data(arena, pair, address, data, size);
+	write_data(pair, address, data, size);
 	free(pair);
 }
 
@@ -866,6 +864,7 @@ void pmap(const arena_t *arena)
 	uint64_t mem_free = arena->free_memory;
 	uint64_t minis_no = arena->minis_no;
 	uint64_t blocks_no = arena->alloc_list->size;
+
 	printf("Total memory: 0x%lX bytes\n", mem_total);
 	printf("Free memory: 0x%lX bytes\n", mem_free);
 	printf("Number of allocated blocks: %lu\n", blocks_no);
@@ -877,23 +876,28 @@ void pmap(const arena_t *arena)
 
 		uint64_t start = ((block_t *)curr_blck->data)->start_address;
 		uint64_t end = start + ((block_t *)curr_blck->data)->size;
+
 		printf("Zone: 0x%lX - 0x%lX\n", start, end);
 
 		node_t *curr_mini = ((block_t *)curr_blck->data)->miniblock_list->head;
 		// pentru start si end de la miniblock-uri folosesc aceleasi variabile
-		// pe care le - am folosit pentru block-uri
-		// pentru numarul de nodurile din liste pot sa - l folosesc pe minis_no
+		// pe care le - am folosit pentru block-uri, iar pentru numarul de
+		// noduri din liste pot sa - l folosesc pe minis_no
 		minis_no = ((block_t *)curr_blck->data)->miniblock_list->size;
 		for (uint64_t j = 0; j < minis_no; j++) {
 			start = ((miniblock_t *)curr_mini->data)->start_address;
 			end = start + ((miniblock_t *)curr_mini->data)->size;
+
 			printf("Miniblock %lu:", j + 1);
 			printf("\t\t0x%lX\t\t-\t\t0x%lX\t\t| ", start, end);
+
 			int8_t perm = ((miniblock_t *)curr_mini->data)->perm;
 			print_perms(perm);
 			printf("\n");
+
 			curr_mini = curr_mini->next;
 		}
+
 		printf("Block %lu end\n", i + 1);
 
 		curr_blck = curr_blck->next;
