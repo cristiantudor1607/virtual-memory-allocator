@@ -1,3 +1,4 @@
+// Copyright Tudor Cristian-Andrei 311CAa 2022-2023
 #include "vma.h"
 
 // functie care cauta prin lista de blocuri

@@ -1,3 +1,4 @@
+// Copyright Tudor Cristian-Andrei 311CAa 2022-2023
 #pragma once
 #include "vma.h"
 #include "text_utils.h"

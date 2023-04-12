@@ -1,3 +1,4 @@
+// Copyright Tudor Cristian-Andrei 311CAa 2022-2023
 #include "text_utils.h"
 
 // string - urile sunt citite caracter cu caracter si alocate dinamic,

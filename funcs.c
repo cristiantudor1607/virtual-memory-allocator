@@ -1,3 +1,4 @@
+// Copyright Tudor Cristian-Andrei 311CAa 2022-2023
 #include "funcs.h"
 
 void ALLOC_ARENA_func(arena_t **arena, char *command, int *memups)

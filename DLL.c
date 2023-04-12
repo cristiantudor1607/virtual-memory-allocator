@@ -1,3 +1,4 @@
+// Copyright Tudor Cristian-Andrei 311CAa 2022-2023
 #include "DLL.h"
 
 // functie care creaza o lista dublu inaluntita in care informatiile din nod au
